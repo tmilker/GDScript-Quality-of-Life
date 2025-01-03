@@ -123,6 +123,11 @@ var return_to_stored_position_shortcut: InputEventKey
 ## [br]Default value: [kbd]alt + M[/kbd][br]
 var store_current_position_shortcut: InputEventKey
 
+## [br]Shortcut to move screen to caret.
+## [br]The shortcut can be changed at [code]Editor -> Editor Settings -> GDScript QoL[/code]
+## [br]Default value: [kbd]alt + C[/kbd][br]
+var return_to_caret_shortcut: InputEventKey
+
 ## Change the [member settings] at [code]Editor -> Editor Settings -> GDScript QoL[/code]
 ## [br][br][param Function Variable Name]: The name of the variable that will be auto created when creating a method with return type.
 ## [br]Default value: [code]private_var[/code]
@@ -159,6 +164,7 @@ var settings: Dictionary = {
 	"gdscript_qol/up_indent_level_shortcut": input_up_indent_level(),
 	"gdscript_qol/return_to_stored_position_shortcut": input_return_to_stored_position(),
 	"gdscript_qol/store_current_position_shortcut": input_store_current_position(),
+	"gdscript_qol/return_to_caret_shortcut": input_return_to_caret(),
 	"gdscript_qol/change_to": {"await f": "await get_tree().process_frame"},
 	}
 
@@ -171,6 +177,7 @@ var last_line: LastLineChanged ## All the last line info are stored at a custom 
 var is_shortcut_pressed: bool = false ## If a shortcut is pressed, this bool is triggered until it finishes it's job, or else things might break with [method check_paste] logic.
 var updated_by_code: bool = false ## If the code was changed by code and not by user, this will return [code]true[/code] and avoid the code to continue running.
 
+## Stored line numbers for script files, used by indent and navigation shortcuts
 var stored_positions: Dictionary = {
 }
 #endregion
@@ -218,6 +225,7 @@ func input_up_indent_level() -> InputEventKey:
 	ul.ctrl_pressed = true
 	return ul
 
+
 ## Creates and return the default [InputEventKey] that will be used for [member return_to_stored_position_shortcut][br]
 ## The default value is [kbd]Alt + K[/kbd] and can be changed at [code]Editor -> Editor Settings -> GDScript QoL[/code]
 func input_return_to_stored_position() -> InputEventKey:
@@ -226,11 +234,21 @@ func input_return_to_stored_position() -> InputEventKey:
 	ul.alt_pressed = true
 	return ul
 
+
 ## Creates and return the default [InputEventKey] that will be used for [member store_current_position_shortcut][br]
-## The default value is [kbd]Alt + K[/kbd] and can be changed at [code]Editor -> Editor Settings -> GDScript QoL[/code]
+## The default value is [kbd]Alt + M[/kbd] and can be changed at [code]Editor -> Editor Settings -> GDScript QoL[/code]
 func input_store_current_position() -> InputEventKey:
 	var ul: InputEventKey = InputEventKey.new()
 	ul.keycode = KEY_M
+	ul.alt_pressed = true
+	return ul
+
+
+## Creates and return the default [InputEventKey] that will be used for [member return_to_caret_shortcut][br]
+## The default value is [kbd]Alt + C[/kbd] and can be changed at [code]Editor -> Editor Settings -> GDScript QoL[/code]
+func input_return_to_caret() -> InputEventKey:
+	var ul: InputEventKey = InputEventKey.new()
+	ul.keycode = KEY_C
 	ul.alt_pressed = true
 	return ul
 
@@ -260,6 +278,7 @@ func set_editor_settings() -> void:
 	up_indent_level_shortcut = editor_setting.get_setting("gdscript_qol/up_indent_level_shortcut")
 	return_to_stored_position_shortcut = editor_setting.get_setting("gdscript_qol/return_to_stored_position_shortcut")
 	store_current_position_shortcut = editor_setting.get_setting("gdscript_qol/store_current_position_shortcut")
+	return_to_caret_shortcut = editor_setting.get_setting("gdscript_qol/return_to_caret_shortcut")
 
 
 ## Remove all keys from [member settings] at [code]Editor -> Editor Settings -> GDScript QoL[/code]
@@ -364,6 +383,10 @@ func _shortcut_input(event: InputEvent) -> void:
 	
 	if event.is_match(store_current_position_shortcut):
 		shortcut_detected(store_current_position)
+		return
+	
+	if event.is_match(return_to_caret_shortcut):
+		shortcut_detected(return_to_caret)
 		return
 
 
@@ -1159,6 +1182,7 @@ func update_line() -> void:
 	check_line(current_line, current_line) # Does all the checks
 	set_caret.call_deferred(current_line) # Keep caret at same line
 
+
 ## Saves line number the caret is on in the current script
 func store_current_position() -> void:
 	if not stored_positions.has(current_script):
@@ -1175,6 +1199,7 @@ func up_indent_level() -> void:
 		store_current_position()
 		set_caret.call_deferred(indent_start_line)
 
+
 ## Pops newest position off stored_positions stack for current script(if exists) and moves caret
 ## to that position
 func return_to_stored_position() -> void:
@@ -1185,6 +1210,11 @@ func return_to_stored_position() -> void:
 		return
 	
 	set_caret.call_deferred(stored_positions[current_script].pop_back())
+
+
+## Move screen back to current caret when you've scrolled away
+func return_to_caret() -> void:
+	set_caret.call_deferred(current_code.get_caret_line())
 
 
 ## Put an [code]:[/code] at the end of unfinished [code]if[/code] statements.[br]
