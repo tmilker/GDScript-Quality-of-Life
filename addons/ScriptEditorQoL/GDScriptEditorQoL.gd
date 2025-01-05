@@ -1283,6 +1283,10 @@ func get_indent_start() -> int:
 	
 	var current_indent_level: int = current_code.get_line(current_line).count("\t")
 	
+	# already at lowest level, don't leave scope
+	if current_indent_level == 0:
+		return -1
+	
 	for i in range(current_line-1, 0, -1):
 		var indent_level: int = current_code.get_line(i).count("\t")
 		if current_indent_level == indent_level: continue # skips single line ifs
